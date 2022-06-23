@@ -1,0 +1,68 @@
+p{
+    margin: 0;
+    padding: 0;
+}
+.page_title{
+    height: 10vh;
+    background-color: antiquewhite;
+    margin: 0;
+    padding: 0;
+}
+.chat_page{
+    display: flex;
+    flex-direction: row-reverse;
+    height: 90vh;
+    width: 100%;
+}
+.contact_list_bar{
+width: 24%;
+border-style: groove;
+}
+
+
+
+.Chat_bar{
+    /* display: flex;
+    flex-direction: column; */
+    position: relative;
+    width: 75%;
+    border-style: groove;
+    background-color: beige;
+}
+.Chat_box{
+    height: 80%;
+    background-color: burlywood;
+}
+.input_box{
+    align-self: flex-end;
+    position: absolute;
+    bottom: 0.3vh;
+}
+
+.msg {
+    font-size: x-small;
+    border: 2px solid #dedede;
+    border-radius: 2px;
+    padding: 1px;
+    margin: 3px 1%;
+  }
+.msg_self{
+    background-color: #eeeeee;
+}
+.msg_time{
+    color: #aaaaaa;
+    font-size: 5px;
+}
+
+
+.bar_title{
+    height: 8%;
+    width: 100%;
+    background-color: aquamarine;
+    margin: 0;
+}
+.user_info{
+    border:  1px solid #32a1ce;
+    padding: 0.3vh;
+    font-size: xx-small;
+}
