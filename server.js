@@ -9,7 +9,7 @@ const mongoose = require('mongoose');
 const { deleteMany } = require('mongoose/lib/model');
 const { ObjectId } = require('mongoose/lib/types');
 var port=3000;
-var socks={};
+var online_users={};
 
 //db connect  and set up
 var mydb = mongoose.connect('mongodb://localhost/testdb', function(err){
@@ -50,21 +50,20 @@ app.get('/', function(req, res){
 //connection functions
 io.sockets.on('connection', function(socket){
 	
-	console.log(socket.id);
-	socket.on('load user_collection',function(req,callback){
-		user_collection.findOne({uid:req},function(err, docs){
+
+	socket.on('set current connection session',function(uidentifier,calback){
+		
+		user_collection.findOne({uid:uidentifier}, function(err, document){
 			if(err) throw err;
-			socks[docs.nickname]= socket.id;
-			socket.nickname=docs.nickname;
-			user_collection.find({}, function(err, docs){
-				if(err) throw err;
-				let i=0,res=[]; 
-				while(docs[i]){res[i]=docs[i].nickname; i++;}
-				callback(res);
-			});
+			if (document){	
+				let nick=document.nickname;
+				console.log('new connection',socket.id,':',nick);
+				socket.nickname=nick;
+				online_users[nick]=socket.id;
+				calback(nick);
+			}
 		});
 	});
-	
 
     socket.on('sign up', function(data, callback){
 	
@@ -88,14 +87,15 @@ io.sockets.on('connection', function(socket){
 
 	});	
     socket.on('log in', function(data, callback){
-		user_collection.find({nickname:data.login},function(err, docs){
+		user_collection.findOne({nickname:data.login},function(err, docs){
 			if(err) throw err;
 			else{
-				if (docs[0]){
-					if (docs[0].password==data.password) callback(docs[0].uid);
+				if (docs){
+					if (docs.password==data.password) callback(docs.uid);
 					callback("err_pass");
 				}
-				else callback(false);
+				else {
+					callback(false);}
 			}
 		});
 	});	
@@ -103,23 +103,32 @@ io.sockets.on('connection', function(socket){
 
 
 
+	socket.on('load user_collection',function(req,callback){
+		user_collection.find({}, function(err, docs){
+			if(err) throw err;
+			let i=0, res=[]; 
+			while(docs[i]){res[i]=docs[i].nickname; i++;}
+			callback(res);
+		});
+	});
+	
+
 	socket.on('load msgs from user', function(chatters,callback){
 	
 		user_collection.findOne({uid:chatters.self},function(err, docs){
 			if(err) throw err;
-			u1=docs.nickname;
+			let u1=docs.nickname;
 			let u2=chatters.opponent;
-			
 			//console.log(u1,u2);
-			if(u2=='all_chat')
-			 msg_collection.find({recepient:u2},function(err, docs){
+
+			if(u2=='all_chat')	msg_collection.find({recepient:u2},function(err, docs){
 				if(err) throw err;
 				callback(docs);
 			})
-			else msg_collection.find({$or: [{sender:u1,recepient:u2},{sender:u2,recepient:u1}]},function(err, docs){
-			if(err) throw err;
-			callback(docs);
-		})
+			else 				msg_collection.find({$or: [{sender:u1,recepient:u2},{sender:u2,recepient:u1}]},function(err, docs){
+				if(err) throw err;
+				callback(docs);
+			})
 		});
 		
 	});
@@ -132,53 +141,44 @@ io.sockets.on('connection', function(socket){
 			if(err) throw err;
 			let sendr=doc.nickname;
 			let massag={'msg':req.message,'sender':sendr,'recepient':req.opponent, 'created' : Date.now()};
-			let crr=Date.now().toString;
+			
 
 			new msg_collection({
 				'msg': req.message,	'sender':sendr,'recepient':req.opponent,'created' : Date.now()
 			}).save(function(err){
-					 if(err) throw err;
-					 if(req.opponent=='all_chat'){	socket.broadcast.emit('recieve message', massag);}
+					if(err) throw err;
+					if(req.opponent=='all_chat'){	socket.broadcast.emit('recieve message', massag);}
 					else{
-						console.log("here we are");
-						console.log(socks);
-						io.to(socks[req.opponent].id).emit('recieve message', massag);
+						
+						try{io.to(online_users[req.opponent]).emit('recieve message', massag);}
+						catch(err){console.log("no such user",err);}
 				}
-					//technically i should have a socks[]array with all the {nickname:socket}, which i add into upon they visit load_usr)collection
-					//now find the reciever:socket and io.sockets.socket('socketId').emit(msg);
-					callback(massag);
+				callback(massag);
 			 });
 		});
 	});
 
 
 
-	
-
-
-
-
-
-
 	socket.on('disconnect', function(data){
-		if(!socket.nickname) return;
-		//nicknames.splice(nicknames.indexOf(socket.nickname),1);
-		delete socks[socket.nickname];
-		//updateNickname();
+		 if(!socket || !socket.nickname) return;
+		 delete online_users[socket.nickname];
+		console.log('someone left, online users: ',online_users);
 	});
+
+
+
+
 	socket.on('load user_collection admin',function(req,callback){
-		user_collection.findOne({uid:req},function(err, docs){
+		user_collection.find({}, function(err, docs){
 			if(err) throw err;
-			socks[docs.nickname] = socket;
-			user_collection.find({}, function(err, docs){
-				if(err) throw err;
-				callback(docs);
-			});
+			callback(docs);
 		});
+
 	});
 	socket.on('delete all docs', function(chatters,callback){
 
-		console.log("deleting dbs");
+		console.log("deleting all data from databases");
 		socket.emit('reset all cookies');
 		mydb.connection.db.dropDatabase();
 	})
@@ -187,6 +187,3 @@ io.sockets.on('connection', function(socket){
 server.listen(port, function(){
 	console.log('server is up!');
 });
-
-
-

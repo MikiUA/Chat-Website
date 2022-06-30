@@ -1,13 +1,16 @@
-
-
-//var chat_box;
-function initialize(){
+//Client side script, loads with the html file on the browser
+function initialize(){//on page load do this:
+    //cookie_f('erase_all'); //in case something crashes uncomment this and not allow users to do anything
     chat_box=document.getElementById('chat_box');
     user_box=document.getElementById('user_list');
+    current_recipient_button=document.getElementById('all_chat_button');
+    
+    //global variables, use the Ram memory
     console.log("COOKIES: ",document.cookie);
-    var user = cookie_f('get','UID');
-    if (!user || !user.length) {
-        //redirect
+    //global variables, use the disc space, sometimes unreliable (store current user and current recipient, so they dont change when page is refreshed)
+    const self_user = cookie_f('get','UID');
+    if (!self_user || !self_user.length) {
+           //TODO redirect to /login page
         document.getElementById('login_page').style.display="block";
         document.getElementById('chat_page').style.display="none";
         
@@ -25,15 +28,22 @@ function initialize(){
         }
     }
     else {
-        socket.emit('load user_collection admin', user,function(docs){
+            //TODO LOGIN by UID
+            //else if user admin fuck the site up
+            
+        socket.emit('set current connection session',self_user,function(res){
+               console.log('success',res);
+        });    
+        
+        socket.emit('load user_collection',null,function(docs){
             for(var i = 0; i < docs.length; i++){
-                display_user_list_admin(docs[i]);
+                display_user_list(docs[i]);
             }   
         });
-        select_user('all_chat');
+        select_user('all_chat',current_recipient_button);
     }
-        //cookie_f('set','recepient','all_chat');
-    //else if user admin fuck the site up
+    
+ 
 }
 
 function cookie_f(method,name,value){
@@ -60,15 +70,7 @@ function cookie_f(method,name,value){
             break;
         }
         case ('erase'||'Erase'): {
-            let erase_start=cookie.indexOf(name);
-            if(erase_start){
-                let erase_end=erase_start;
-                while(cookie[erase_end] && cookie[erase_end]!=';'){
-                    erase_end++;
-                }erase_end++;
-                document.cookie=cookie.replace(cookie.slice(erase_start,erase_end),'');
-            }
-            //TODO this is not exactly working, though of a little use now, low priority
+            document.cookie = name + "=;expires=Thu, 01 Jan 1970 00:00:00 GMT";        
             break;
         }
         case ('erase_all'||'Erase_all'): {
@@ -103,7 +105,7 @@ function changeloginbox(box){
 
 
 var socket = io.connect();
-function log_in(bool0){
+function log_in(bool0){//0 if login, 1 if signup
     let login,password;
     if(!bool0){
         login=document.getElementById('login0');
@@ -125,6 +127,7 @@ function log_in(bool0){
                     if(res=="err_pass") cookie_f('set','login_res',"err_pass");
                     else { 
                         cookie_f('set','UID',res);
+                        cookie_f('set','self_nickname',req.login);
                     }
                 }
                 else cookie_f('set','login_res',"err_usr");
@@ -135,13 +138,14 @@ function log_in(bool0){
             
             socket.emit('sign up', req, function (res){
                 cookie_f('set','signup_res',res);
-                if(res)   cookie_f('set','UID',res); 
+                if(res)   {cookie_f('set','UID',res); 
+                cookie_f('set','self_nickname',req.login);}
                 else cookie_f('set','signup_res',"login_exists");
             })
         }
-        //cookie_f('erase','login_res');
-        //cookie_f('erase','signup_res');
-        //cookie_f('erase','current_login_session');
+        cookie_f('erase','login_res');
+        cookie_f('erase','signup_res');
+        cookie_f('erase','current_login_session');
 
     document.getElementById('login_page').style.display="block";
     document.getElementById('chat_page').style.display="none";
@@ -153,22 +157,32 @@ function log_in(bool0){
 function display_user_list(data){
     const usr=document.createElement("div");
     user_box.appendChild(usr);
-    usr.outerHTML="<div class='user_info' onclick='select_user(\""+data+"\")'><b>"+data+"</b></div>";
+    usr.outerHTML="<div class='user_info' onclick='select_user(\""+data+"\",this)'><b>"+data+"</b></div>";
     return chat_box.append('');
 }
 
-function select_user(usr){
-    document.getElementById('current_reciever').innerHTML=usr;
+function select_user(usr, button){
+    try {
+        current_recipient_button.style.border=  "1px solid #32a1ce";
+        current_recipient_button=button;
+        current_recipient_button.style.border=  "1px solid #fa110c";
+    }    catch(err){console.log(err);}
 
+    self_nick=  cookie_f('get','self_nickname');
+    self_id=  cookie_f('get','UID');
+
+    document.getElementById('current_reciever').innerHTML=self_nick+" - "+usr;
     cookie_f('set','recepient',usr);
-    let req={"self":cookie_f('get','UID'),"opponent":usr};
+    let req={'self':self_id,'opponent':usr}
     socket.emit('load msgs from user',req,function(res_msgs){
         chat_box.innerHTML='';
         for(var i = 0; i < res_msgs.length; i++){
             displayChat(res_msgs[i]);
         }
     });
+    
 }
+
 
 
 
@@ -196,29 +210,6 @@ socket.on('recieve message', function(data){
    
 });
 
-
-
-
-
-
-
-
-
-
-
-
-
-socket.on('load old msgs', function(docs){
-    for(var i = 0; i < docs.length; i++){
-        displayChat(docs[i]);
-    }
-});
-
-
-// socket.on('whisper', function(data){
-//     chat_box.append('<span class="whisper"><b>' + data.nickname + '</b>:' + data.msg + data.created+'<span><br>');
-// });
-
 function displayChat(data){
     const msg=document.createElement("span");
     chat_box.appendChild(msg);
@@ -236,29 +227,24 @@ function displayChat(data){
 
 
 
-function display_user_list_admin(data){
-    const usr=document.createElement("div");
-    user_box.appendChild(usr);
-    usr.outerHTML="<div class='user_info' onclick='select_user(\""+data.nickname+"\")'><b>"+data.nickname+"</b><br>"+data.password+"</div>";
-    return chat_box.append('');
-}
-function admin_tools(tool){
-    switch (method) {
+
+function admin_tools(tool,toolbox){
+    switch (tool) {
         case ('toolbox'): {
-            doc=document.getElementById('admin_toolbox_enable');
-            if(document.getElementById('admin_toolbox_enable').value=='open admin tools'){doc.value='close admin tools'; document.getElementById('admin_toolbox').style.display="block";}
-            else{doc.value='open admin tools'; document.getElementById('admin_toolbox').style.display="none";}
+            doc=toolbox;//document.getElementById('admin_toolbox_enable');
+            if(doc.value=='open admin tools'){     doc.value='close admin tools'; 
+             document.getElementById('admin_toolbox').style.display="block";}
+           else{doc.value='open admin tools'; document.getElementById('admin_toolbox').style.display="none";}
             break;
         }
         case ('get_users'): {
-            socket.emit('load user_collection admin', user,function(docs){
-                user_box.innerHTML="<div class='user_info' onclick='select_user(\"all_chat\")'>All chat</div>";
+            user_box.innerHTML="<div class='user_info' onclick='select_user(\"all_chat\",this)'>All chat</div>";
+            let req='null';
+            socket.emit('load user_collection admin',req,function(docs){
+               console.log(docs);
                 for(var i = 0; i < docs.length; i++){
-                    //display_user_list(docs[i]);
-                    const usr=document.createElement("div");
-                    user_box.appendChild(usr);
-                    usr.outerHTML="<div class='user_info' onclick='select_user(\""+docs[i].nickname+"\")'><b>login: " + docs[i].nickname + '</b><p>uid: "' + docs[i].uid + '" </p><p>pass: "'+ docs[i].password + '"</p></div>';
-                    return chat_box.append('');
+                    display_user_list_admin(docs[i]);
+  
                 }   
             });
             break;
@@ -283,6 +269,12 @@ function admin_tools(tool){
    
     
 
+}
+function display_user_list_admin(data){
+    const usr=document.createElement("div");
+    user_box.appendChild(usr);
+    usr.outerHTML="<div class='user_info' onclick='select_user(\""+data.nickname+"\",this)'><b>"+data.nickname+"</b><br>uid:"+data.uid+"<br>pass:"+data.password+"</div>";
+    return chat_box.append('');
 }
 socket.on('reset all cookies', function(){
    cookie_f('erase_all');

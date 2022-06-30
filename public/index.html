@@ -4,20 +4,20 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>KS Chat</title>
     <link rel="stylesheet" type="text/css" href="styles.css" />
 </head>
 <body onload="initialize()">
-    <input id="admin_toolbox_enable" onclick= "admin_tools('toolbox')" type="button" value="open admin tools">
     <div id="admin_toolbox" style="display:none">
-    <br><input onclick= "cookie_f('erase_all')" type="button" value="Erase cookies on ypur device">
-    <input onclick= "admin_tools('get_users')" type="button" value="Get all users (list with ids and passwords">
+    <input onclick= "cookie_f('erase_all')" type="button" value="Erase cookies on your device">
+    <input onclick= "admin_tools('get_users')" type="button" value="Get all users (list with ids and passwords)">
     <input onclick= "admin_tools('get_msgs')" type="button" value="Get all message collection">
     <input onclick= "admin_tools('clear_db')" type="button" value="Erase all users and messages">
-    <input onclick= "admin_tools('clear_msg')" type="button" value="Erase all messages">
-    <br></div>
+    <input onclick= "admin_tools('clear_msg')" type="button" value="Erase all messages"><br>
+    </div>
     
     <div id ="login_page" class="logsign" style="display:none">
+        <input id="admin_toolbox_enable" onclick= "admin_tools('toolbox',this)" type="button" value="open admin tools">
         <input onclick="changeloginbox(0)" type="button" value="Log in">
         <input onclick="changeloginbox(1)" type="button" value="Sign Up">
         <form id="loginbox" class=""><h1>Log in</h1>
@@ -31,8 +31,8 @@
         <form id="signupbox" style="display:none"><h1>Sign up</h1>
             <p>Your new login: 
                 <input id="login1" type="text"></p>
-            <p>Your email: 
-                <input type="text" onchange="this.value='This does not work, dont even try'" value="This does not work, dont even try"></p>
+            <p><label> Email:
+                <input  type="text" onchange="this.value=' It still doesn\'t!'; " value="This does not work yet"></label></p>
             <p>Password: 
                 <input id="password1" type="password"></p>
             <input type="submit" onclick="log_in(1)">
@@ -42,18 +42,19 @@
     <div id="chat_page" class="chat_page">
         <div class="Chat_bar">
 
-            <div class="bar_title" id="current_reciever">Current opponent</div>
-            <div id="chat_box" class="chat_box">                
-                <span class='msg'><b>nickname:</b>: message <span class='msg_time'> Time</span></span><br>
+            <div class="bar_title" id="current_reciever">Select a user to start messaging</div>
+            <div id="chat_box" class="bar_middle">                
+                <!-- <span class='msg'><b>nickname:</b>: message <span class='msg_time'> Time</span></span><br> -->
             </div>
-            <div class="input_box"><input type='text' id="input_message" placeholder="input message"><input type="submit" onclick="submit_message()"></div>
+            <form class="bar_bottom"><input type='text' id="input_message" placeholder="input message"><input type="submit" onclick="submit_message()"></form>
         
         </div>
-        <aside class="contact_list_bar">
+        <aside class="Contacts_bar">
             <div class="bar_title"><!--  <input type="text" value="search contact"> -->  User list</div>
-            <div id="user_list" class="user_list">
-                <div class='user_info' onclick='select_user("all_chat")'>All chat</div>
+            <div id="user_list" class="bar_middle">
+                <div id='all_chat_button' class='user_info' onclick='select_user("all_chat",this)'>All chat</div>
             </div>
+            <input id="admin_toolbox_enable" class="bar_bottom" onclick= "admin_tools('toolbox',this)" type="button" value="open admin tools">
         </aside>
 
     </div>
